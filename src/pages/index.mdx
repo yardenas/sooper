@@ -1,0 +1,206 @@
+---
+layout: ../layouts/Layout.astro
+title: "Safe Exploration via Policy Priors"
+description: Scalable safe exploration algorithm with provably safety and optimality guarantees.
+favicon: /sooper/superman.png
+---
+
+import { Image } from "astro:assets";
+
+import Layout from "../layouts/Layout.astro";
+
+import Header from "../components/Header.astro";
+import TwoColumns from "../components/TwoColumns.astro";
+import Video from "../components/Video.astro";
+import YouTubeVideo from "../components/YouTubeVideo.astro";
+import PDF from "../components/PDF.astro";
+import Figure from "../components/Figure.astro";
+import LaTeX from "../components/LaTeX.astro";
+import SmallCaps from "../components/SmallCaps.astro";
+import Splat from "../components/Splat.tsx";
+
+import CodeBlock from "../components/CodeBlock.astro";
+export const components = { pre: CodeBlock };
+
+import sooperIdea from "../assets/sooper-idea.svg"
+import sooperDemoVideo from "../assets/sooper-demo.mp4"
+import timeLapse from "../assets/timelapse.mp4"
+import hardwarePlot from "../assets/hardware.svg"
+import sooperDemo from "../assets/sooper-demo.svg"
+import sooperExpansion from "../assets/expansion_standalone.svg"
+import simToSim from "../assets/sim-to-sim-bar.svg"
+import cartpoleVision from "../assets/cartpole-vision.png"
+import cartpoleVisionPlot from "../assets/cartpole-swingup-vision.svg"
+
+
+<Header
+  title={frontmatter.title}
+  authors={[
+    {
+      name: "Manuel Wendl",
+      url: "https://manuelwendl.github.io/",
+      institution: "ETH Zurich",
+      notes: ["*"]
+    },
+    {
+      name: "Yarden As",
+      url: "https://yas.pub",
+      institution: "ETH Zurich",
+      notes: ["*"]
+    },
+    {
+      name: "Manish Prajapat",
+      url: "https://www.linkedin.com/in/manish-prajapat-eth/",
+      institution: "ETH Zurich",
+    },
+    {
+      name: "Anton Pollak",
+      url: "https://acpoll.github.io/",
+      institution: "ETH Zurich",
+    },
+    {
+      name: "Stelian Coros",
+      url: "https://crl.ethz.ch/people/coros/",
+      institution: "ETH Zurich",
+    },
+    {
+      name: "Andreas Krause",
+      url: "https://las.inf.ethz.ch/krausea",
+      institution: "ETH Zurich",
+    },
+  ]}
+  conference="Preprint"
+  notes={[
+    {
+      symbol: "*",
+      text: "Equal Contribution",
+    },
+  ]}
+  links={[
+    {
+      name: "Code",
+      url: "https://github.com/yardenas/safe-learning",
+      icon: "mdi:github",
+    },
+    /* {
+      name: "arXiv",
+      url: "https://arxiv.org/abs/2509.18648",
+      icon: "academicons:arxiv",
+    },
+    {
+      name: "Paper",
+      url: "https://openreview.net/forum?id=Pe1ypX9gBO",
+      icon: "ri:file-pdf-2-line",
+
+    }, */
+  ]}
+/>
+
+## SOOPER: Safe Online Optimism for Pessimistic Expansion in RL
+SOOPER (**S**afe **O**nline **O**ptimism for **P**essimistic **E**xpansion in **R**L) is a reinforcement learning algorithm designed to ensure safe exploration while learning in real-world environments.
+SOOPER uses prior policies that can be derived from scarce offline data or simulation under distribution shifts. Such policies are invoked pessimistically during online rollouts to maintain safety. These rollouts are collected optimistically so as to maximize information about a world model of the environment. Using this model, SOOPER constructs a simulated RL environment, used for planning and exploration, whose trajectories terminate once the prior policy is invoked. The key idea is that early terminations incentivize the agent to avoid the prior policy when trajectories with higher returns can be obtained safely. This key idea is illustrated below.
+
+### Safety Guarantee via Online Cost Tracking
+
+<Figure caption="">
+<TwoColumns>
+  <div slot="left" class="flex flex-col items-center">
+      <Image src={sooperIdea} alt="Idea behind SOOPER." class="object-cover w-full"/>
+  </div>
+  <div slot="right" class="flex flex-col items-center">
+      <Video source={sooperDemoVideo} />
+  </div>
+</TwoColumns>
+</Figure>
+In the example above, the agent's goal is to reach the cross marker while avoiding obstacles (tires). The agent deploys an exploration policy <LaTeX formula="\pi_n" inline="true"/>, however at time <LaTeX formula="t" inline="true"/>, it switches to the prior policy <LaTeX formula="\hat \pi" inline="true"/>, to maintain the safety criterion <LaTeX formula="\Phi(a_t,s_t,c_{<t},Q_{c,n}^{\hat \pi}) = \sum_{\tau = 0}^{t  - 1} \gamma^\tau c(s_t, a_t) + Q_{c,n}^{\hat \pi}(s_t, a_t) < d"  inline="true"/>.
+The prior policy <LaTeX formula="\hat \pi" inline="true"/> ensures safety by following a conservative route, but sacrifices performance, resulting in a lower return <LaTeX formula="\underline{V}^{\hat \pi}_r(s_t)" inline="true"/>. 
+The trajectory of iteration <LaTeX formula="n" inline="true"/> is recorded to improve models of subsequent iterations.
+After <LaTeX formula="N" inline="true"/> iterations, as more data is gathered, the agent learns a more rewarding trajector via model-generated rollouts that terminate with terminal reward of the expected accumulated future rewards <LaTeX formula="\underline{V}^{\hat \pi}_r(s_t)" inline="true"/> the expected accumulated future reward following the pessimistic prior policy.
+
+
+### Expansion and Exploration-Exploitation
+Discovering new optimal behaviors require learners to balance between exploring new promising behaviors and exploiting behaviors that are already known to be rewarding. When safety is _not_ required during learning, this "exploration-exploitation" dilemma is known to be efficiently solved by being "optimistic in face of uncertainty". Intuitively, by assuming that things that we do not know will yield positive outcomes; if we were proved wrong, and outcomes were negative, we acquired new information, and now know not to go there.
+
+In contrast, in _safe exploration_, we cannot explore freely, but only try out behaviors (or more formally, policies) that we are certain to be safe. More explicitly, we can only explore-exploit within a set that is known to be safe with high probability. Crucially, this set is likely to not include an optimal policy <LaTeX formula="\pi_c^*" inline="true"/>; optimistic search for an optimal policy will not be enough to find it. Safe exploration techniques solve this challenge with a reward-free pure exploration phase that effectively _expands_ the set of feasible policies.
+
+<Figure caption="Left: Exploration-exploitation in constrained tasks may not find an optimal policy because search is limited to a set of policies that are known to be safe (in purple). Right: expansion proactively enlarges the safe set and reaches to optimum.">
+    <Image src={sooperExpansion} alt="Exploration-exploitation vs. Expansion" class="object-cover w-full h-full" />
+</Figure>
+
+While pure exploration allows the agent to sufficiently expand the set of feasible policies, performance _during_ this phase can be _arbitrarily bad_ because the learner completely ignores its objective, which specified by the rewards. SOOPER addresses this via intrinsic rewards, namely, rewards that guide the learner to systematically explore even in the absence of (extrinsic) rewards from the real environment. This can be done by solving at each iteration <LaTeX formula="n" inline="true"/>
+
+<LaTeX formula="
+\pi_n = \arg\max_\pi \mathbb{E}_{\tilde{p}, \pi, s_0}\left[\sum_{t=0}^\infty \gamma^t\tilde{r}(s_t,a_t) + (\gamma^t\lambda_{\text{explore}}+\sqrt{\gamma^t}\lambda_{\text{expand}})\|\sigma_n(s_t,a_t)\|\right]
+"/>
+
+using model-generated rollouts, where <LaTeX formula="\sigma_n" inline="true"/> denotes the learner's uncertainty at a given state-action. The main takeaway is that intrinsic rewards allow us to do both exploration and expansion with a _single objective_, therefore there is no need for reward-free pure exploration.
+
+
+## But Does it Work?
+
+### Yes
+We test SOOPER on a five different simulated reinforcement learning environments, comparing it with state-of-the-art safe exploration algorithms. In all of our experiments, we first train a pessimistic prior policy <LaTeX formula="\hat\pi" inline="true"/> under shifted dynamics. This pessimistic prior policy is known to be safe but due to pessimism, it underperforms when deployed on the true dynamics.
+
+<Figure caption="Experiment results across five tasks. 
+The upper plot shows the performance improvement over the prior policy. The lower plot shows the largest recorded accumulated cost during training. SOOPER satisfies the constraints in all tasks while being on par or outperforming the baselines.">
+    <Image src={simToSim} alt="Experiment results across five tasks. SOOPER satisfies the constraints in all tasks while being on par or outperforming the baselines." class="object-contain w-full h-auto"/>
+</Figure>
+
+### Vision Control
+
+<TwoColumns>
+  <div slot="left" class="flex flex-col items-center">
+    We show that SOOPER can handle control tasks from image observations. Using a CartpoleSwingup setup, the method learns directly from visual embeddings and consistently meets safety constraints while achieving near-optimal performance, even under changes in the environment. As shown, SOOPER (in purple) is the only baseline that satisfies the constraint throughout learning.
+  </div>
+  <div slot="right" class="flex flex-col items-center">
+    <Image
+      src={cartpoleVisionPlot}
+      alt="Performance of SOOPER compared to an unsafe baseline."
+      class="w-full object-contain"
+    />
+  </div>
+</TwoColumns>
+
+<Figure caption="The task is to swing up the pendulum while keeping the cart within the red region. The agent observes only three temporally-stacked grayscale images.">
+<Image
+  src={cartpoleVision}
+  alt="Visualization of the task."
+  class="w-full h-[150px] object-contain"
+/>
+</Figure>
+
+
+### Hardware
+
+We train a policy using first-principles model of a remote-control racing car that operates at 60 Hz. We then continue training online that policy with SOOPER on real remove control race car using SOOPER.
+
+<Figure caption="Safe exploration on real hardware with SOOPER. We report the mean and standard error across five seeds of the objective and constraint measured on the real system. SOOPER learns to improve over the prior policy while satisfying the constraints throughout learning.">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center w-full -mt-10">
+    <div class="md:col-span-2">
+      <Image src={sooperDemo} alt="Visualization of the task." class="object-contain w-full h-auto"/>
+    </div>
+    <div class="md:col-span-1">
+      <Image src={hardwarePlot} alt="Performance of SOOPER compared to an unsafe baseline." class="object-contain w-full h-full max-h-96 mx-auto" />
+    </div>
+  </div>
+</Figure>
+
+<Figure caption="SOOPER significantly improves over the prior policy while maintaining safety throughout learning.">
+    <Video source={timeLapse} />
+</Figure>
+This experiment is repeated later also by obtaining a prior policy that was trained using expert offline data from the real system.
+
+## Learn More
+{/* Check out <a href="https://www.arxiv.org/abs/2509.18648" target="_blank" rel="noopener noreferrer">our paper</a> for a deep dive and more cool experiments. */}
+Check out our <a href="https://github.com/yardenas/safe-learning" target="_blank" rel="noopener"/> open-source implementation for more details. Stay tuned for upcoming paper submissions!
+{/* ## Cite
+
+```
+@inproceedings{
+  as2025spidrsimpleapproachzeroshot,
+  title={{SP}i{DR}: A Simple Approach for Zero-Shot Safety in Sim-to-Real Transfer},
+  author={Yarden As and Chengrui Qu and Benjamin Unger and Dongho Kang and Max van der Hart and Laixi Shi and Stelian Coros and Adam Wierman and Andreas Krause},
+  booktitle={International Conference on Neural Information Processing Systems},
+  year={2025},
+}
+``` */}
